@@ -1,25 +1,19 @@
 require("dotenv").config();
 const express = require("express");
 const session = require("express-session");
-const serverless = require("serverless-http");
-const { createClient } = require("redis");
 const { keycloak, redisStore } = require("./keycloak");
 const logger = require("./logger");
 const config = require("./config");
 
-// Initialize Express
 const app = express();
 
-// -------------------- Redis --------------------
-const redisClient = createClient({ legacyMode: true });
-redisClient.connect().catch(console.error);
+// -------------------- CORS Middleware --------------------
+const allowedOrigins = [
+  "https://siggem-git-main-mans-projects-72273ac5.vercel.app",
+  "http://localhost:3000"
+];
 
-// -------------------- CORS --------------------
 app.use((req, res, next) => {
-  const allowedOrigins = [
-    "https://siggem-git-main-mans-projects-72273ac5.vercel.app",
-    "http://localhost:3000"
-  ];
   const origin = req.headers.origin;
   if (allowedOrigins.includes(origin)) {
     res.header("Access-Control-Allow-Origin", origin);
@@ -27,18 +21,16 @@ app.use((req, res, next) => {
       "Access-Control-Allow-Headers",
       "Origin, X-Requested-With, Content-Type, Accept, Authorization"
     );
-    res.header(
-      "Access-Control-Allow-Methods",
-      "GET, POST, PUT, DELETE, OPTIONS"
-    );
+    res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
     res.header("Access-Control-Allow-Credentials", "true");
   }
 
-  // ✅ Preflight request handling
+  // ✅ Immediately respond to preflight
   if (req.method === "OPTIONS") return res.sendStatus(204);
 
   next();
 });
+
 // -------------------- Sessions --------------------
 app.use(
   session({
@@ -46,7 +38,7 @@ app.use(
     secret: process.env.SESSION_SECRET || "fallback-secret",
     resave: false,
     saveUninitialized: false,
-    cookie: { secure: process.env.NODE_ENV === "production" },
+    cookie: { secure: process.env.NODE_ENV === "production", maxAge: 86400 * 1000 },
   })
 );
 
@@ -58,10 +50,18 @@ if (!config.DISABLE_KEYCLOAK_PROTECTION) {
 
   app.use((req, res, next) => {
     if (openPaths.has(req.path)) return next();
-    // ✅ Skip OPTIONS requests to avoid redirect
+
+    // ✅ Skip Keycloak for preflight requests
     return req.method === "OPTIONS"
       ? res.sendStatus(204)
       : keycloak.protect()(req, res, next);
+  });
+
+  app.use((req, res, next) => {
+    if (req.kauth?.grant?.access_token) {
+      req.user = req.kauth.grant.access_token.content;
+    }
+    next();
   });
 }
 
@@ -77,11 +77,6 @@ app.use("/cost-center", require("./routes/costCenter"));
 app.use("/company", require("./routes/company"));
 app.use("/user", require("./routes/user"));
 
-app.get("/", (req, res) => {
-  res.send("Sigge API is running");
-});
+app.get("/", (req, res) => res.send("Sigge API is running"));
 
-// -------------------- Export --------------------
-// For Vercel serverless deployment
-
-module.exports = serverless(app);
+module.exports = app;
