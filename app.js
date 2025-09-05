@@ -15,15 +15,27 @@ redisClient.connect().catch(console.error);
 
 const { keycloak, redisStore } = require("./keycloak");
 //Förhindra CORS-fel
+const allowedOrigins = [
+  process.env.CORS_ORIGIN,        // e.g., https://siggem-git-main-mans-projects-72273ac5.vercel.app
+  process.env.CORS_ORIGIN_LOCAL,  // e.g., http://localhost:3000
+].filter(Boolean);
+
 const corsOptions = {
-  origin: [process.env.CORS_ORIGIN, process.env.CORS_ORIGIN_LOCAL].filter(
-    Boolean,
-  ),
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allowedHeaders: ["Authorization", "Content-Type"],
+  credentials: true, // <- needed if using cookies or auth
   maxAge: 86400,
-  credentials: false,
 };
+
 app.use(cors(corsOptions));
 app.options("*", cors(corsOptions));
 
