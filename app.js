@@ -15,28 +15,32 @@ const redisClient = createClient({ legacyMode: true });
 redisClient.connect().catch(console.error);
 
 // -------------------- CORS Setup --------------------
+import Cors from 'cors';
+import initMiddleware from '../../lib/init-middleware';
+
+// Allowed origins
 const allowedOrigins = [
-  "https://siggem-git-main-mans-projects-72273ac5.vercel.app", // Vercel frontend
-  "http://localhost:3000"
-].filter(Boolean);
+  'https://siggem-git-main-mans-projects-72273ac5.vercel.app',
+  'https://siggem-git-main-mans-projects-72273ac5.vercel.app/',
+  'http://localhost:3000'
+];
 
-const corsOptions = {
-  origin: function(origin, callback) {
-    if (!origin) return callback(null, true); // Allow server-to-server requests
-    if (allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error("Not allowed by CORS"));
-    }
-  },
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Authorization", "Content-Type"],
-  credentials: true, // important if using cookies / auth headers
-  maxAge: 86400,
-};
+const cors = initMiddleware(
+  Cors({
+    origin: function(origin, callback) {
+      if (!origin) return callback(null, true); // server-to-server requests
+      if (allowedOrigins.includes(origin)) return callback(null, true);
+      callback(new Error('Not allowed by CORS'));
+    },
+    credentials: true,
+  })
+);
 
-app.use(Cors(corsOptions));
-app.options("*", Cors(corsOptions));
+export default async function handler(req, res) {
+  await cors(req, res); // Apply CORS
+
+  res.status(200).json({ message: 'CORS works!' });
+}
 
 // -------------------- Session Setup --------------------
 app.use(
