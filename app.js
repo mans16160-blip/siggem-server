@@ -6,7 +6,7 @@ const { createClient } = require("redis");
 const { keycloak, redisStore } = require("./keycloak");
 const config = require("./config");
 const logger = require("./logger");
-
+const {initMiddleware} = require('./lib/init-middleware')
 // Initialize Express
 const app = express();
 
@@ -15,8 +15,7 @@ const redisClient = createClient({ legacyMode: true });
 redisClient.connect().catch(console.error);
 
 // -------------------- CORS Setup --------------------
-import Cors from 'cors';
-import initMiddleware from '../../lib/init-middleware';
+
 
 // Allowed origins
 const allowedOrigins = [
