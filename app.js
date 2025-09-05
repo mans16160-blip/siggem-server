@@ -15,12 +15,11 @@ const redisClient = createClient({ legacyMode: true });
 redisClient.connect().catch(console.error);
 
 // -------------------- CORS --------------------
-const allowedOrigins = [
-  "https://siggem-git-main-mans-projects-72273ac5.vercel.app",
-  "http://localhost:3000",
-];
-
 app.use((req, res, next) => {
+  const allowedOrigins = [
+    "https://siggem-git-main-mans-projects-72273ac5.vercel.app",
+    "http://localhost:3000"
+  ];
   const origin = req.headers.origin;
   if (allowedOrigins.includes(origin)) {
     res.header("Access-Control-Allow-Origin", origin);
@@ -28,13 +27,11 @@ app.use((req, res, next) => {
       "Access-Control-Allow-Headers",
       "Origin, X-Requested-With, Content-Type, Accept, Authorization"
     );
-    res.header(
-      "Access-Control-Allow-Methods",
-      "GET, POST, PUT, DELETE, OPTIONS"
-    );
+    res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
     res.header("Access-Control-Allow-Credentials", "true");
   }
-  if (req.method === "OPTIONS") return res.sendStatus(204);
+
+  if (req.method === "OPTIONS") return res.sendStatus(204); // <--- important for preflight
   next();
 });
 // -------------------- Sessions --------------------
