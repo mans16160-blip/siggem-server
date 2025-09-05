@@ -1,6 +1,7 @@
 require("dotenv").config();
 const express = require("express");
 const session = require("express-session");
+const serverless = require("serverless-http");
 const { createClient } = require("redis");
 const { keycloak, redisStore } = require("./keycloak");
 const logger = require("./logger");
@@ -16,7 +17,7 @@ redisClient.connect().catch(console.error);
 // -------------------- CORS --------------------
 const allowedOrigins = [
   "https://siggem-git-main-mans-projects-72273ac5.vercel.app",
-  "http://localhost:3000"
+  "http://localhost:3000",
 ];
 
 app.use((req, res, next) => {
@@ -33,14 +34,9 @@ app.use((req, res, next) => {
     );
     res.header("Access-Control-Allow-Credentials", "true");
   }
-
-  if (req.method === "OPTIONS") {
-    return res.sendStatus(204);
-  }
-
+  if (req.method === "OPTIONS") return res.sendStatus(204);
   next();
 });
-
 // -------------------- Sessions --------------------
 app.use(
   session({
@@ -95,4 +91,5 @@ app.get("/", (req, res) => {
 
 // -------------------- Export --------------------
 // For Vercel serverless deployment
-module.exports = app;
+
+module.exports = serverless(app);

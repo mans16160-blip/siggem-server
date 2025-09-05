@@ -43,6 +43,7 @@
     "prettier": "^3.5.3",
     "puppeteer": "^24.8.2",
     "redis": "^4.7.1",
+    "serverless-http": "^4.0.0",
     "sharp": "^0.34.3",
     "smtp-server": "^3.13.7",
     "util": "^0.12.5",
