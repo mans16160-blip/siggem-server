@@ -1,47 +1,37 @@
-require("dotenv").config();
 const express = require("express");
 const session = require("express-session");
 const Cors = require("cors");
-const { createClient } = require("redis");
 const { keycloak, redisStore } = require("./keycloak");
-const config = require("./config");
-const logger = require("./logger");
-const {initMiddleware} = require('./lib/init-middleware')
-// Initialize Express
+
 const app = express();
-
-// Initialize Redis
-const redisClient = createClient({ legacyMode: true });
-redisClient.connect().catch(console.error);
-
-// -------------------- CORS Setup --------------------
-
 
 // Allowed origins
 const allowedOrigins = [
-  'https://siggem-git-main-mans-projects-72273ac5.vercel.app',
-  'https://siggem-git-main-mans-projects-72273ac5.vercel.app/',
-  'http://localhost:3000'
+  "https://siggem-git-main-mans-projects-72273ac5.vercel.app",
+  "http://localhost:3000"
 ];
 
-const cors = initMiddleware(
-  Cors({
-    origin: function(origin, callback) {
-      if (!origin) return callback(null, true); // server-to-server requests
-      if (allowedOrigins.includes(origin)) return callback(null, true);
-      callback(new Error('Not allowed by CORS'));
-    },
-    credentials: true,
-  })
-);
+// CORS middleware
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  if (allowedOrigins.includes(origin)) {
+    res.header("Access-Control-Allow-Origin", origin);
+    res.header(
+      "Access-Control-Allow-Headers",
+      "Origin, X-Requested-With, Content-Type, Accept, Authorization"
+    );
+    res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+    res.header("Access-Control-Allow-Credentials", "true");
+  }
 
-export default async function handler(req, res) {
-  await cors(req, res); // Apply CORS
+  if (req.method === "OPTIONS") {
+    return res.sendStatus(204); // preflight request
+  }
 
-  res.status(200).json({ message: 'CORS works!' });
-}
+  next();
+});
 
-// -------------------- Session Setup --------------------
+// Session
 app.use(
   session({
     store: redisStore,
@@ -49,50 +39,24 @@ app.use(
     resave: false,
     saveUninitialized: false,
     cookie: {
-      secure: process.env.NODE_ENV === "production", // HTTPS in prod
+      secure: process.env.NODE_ENV === "production",
       maxAge: 1000 * 60 * 60 * 24,
     },
   })
 );
 
-// -------------------- Keycloak Protection --------------------
-if (!config.DISABLE_KEYCLOAK_PROTECTION) {
-  logger.info("Keycloak protection enabled");
+// Keycloak
+if (!process.env.DISABLE_KEYCLOAK_PROTECTION) {
   app.use(keycloak.middleware());
 
   const openPaths = new Set(["/health", "/user/reset-password"]);
-
-  const skipOptions = (mw) => (req, res, next) =>
-    req.method === "OPTIONS" ? res.sendStatus(204) : mw(req, res, next);
-
   app.use((req, res, next) => {
     if (openPaths.has(req.path)) return next();
-    return skipOptions(keycloak.protect())(req, res, next);
-  });
-
-  app.use((req, res, next) => {
-    if (req.kauth?.grant?.access_token) {
-      req.user = req.kauth.grant.access_token.content;
-    }
-    next();
+    return req.method === "OPTIONS" ? res.sendStatus(204) : keycloak.protect()(req, res, next);
   });
 }
 
-// -------------------- Middleware --------------------
+// Routes...
 app.use(express.json());
-app.use("/uploads", express.static("uploads"));
 
-// -------------------- Routes --------------------
-app.use("/health", require("./routes/health"));
-app.use("/receipt", require("./routes/receipt"));
-app.use("/upload", require("./routes/upload"));
-app.use("/cost-center", require("./routes/costCenter"));
-app.use("/company", require("./routes/company"));
-app.use("/user", require("./routes/user"));
-
-app.get("/", (req, res) => {
-  res.send("Sigge API is running");
-});
-
-// Export for Vercel serverless deployment
 module.exports = app;
