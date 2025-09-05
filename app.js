@@ -27,11 +27,16 @@ app.use((req, res, next) => {
       "Access-Control-Allow-Headers",
       "Origin, X-Requested-With, Content-Type, Accept, Authorization"
     );
-    res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+    res.header(
+      "Access-Control-Allow-Methods",
+      "GET, POST, PUT, DELETE, OPTIONS"
+    );
     res.header("Access-Control-Allow-Credentials", "true");
   }
 
-  if (req.method === "OPTIONS") return res.sendStatus(204); // <--- important for preflight
+  // ✅ Preflight request handling
+  if (req.method === "OPTIONS") return res.sendStatus(204);
+
   next();
 });
 // -------------------- Sessions --------------------
@@ -41,32 +46,22 @@ app.use(
     secret: process.env.SESSION_SECRET || "fallback-secret",
     resave: false,
     saveUninitialized: false,
-    cookie: {
-      secure: process.env.NODE_ENV === "production",
-      maxAge: 1000 * 60 * 60 * 24,
-    },
+    cookie: { secure: process.env.NODE_ENV === "production" },
   })
 );
 
 // -------------------- Keycloak --------------------
 if (!config.DISABLE_KEYCLOAK_PROTECTION) {
-  logger.info("Keycloak protection enabled");
   app.use(keycloak.middleware());
 
   const openPaths = new Set(["/health", "/user/reset-password"]);
 
   app.use((req, res, next) => {
     if (openPaths.has(req.path)) return next();
+    // ✅ Skip OPTIONS requests to avoid redirect
     return req.method === "OPTIONS"
       ? res.sendStatus(204)
       : keycloak.protect()(req, res, next);
-  });
-
-  app.use((req, res, next) => {
-    if (req.kauth?.grant?.access_token) {
-      req.user = req.kauth.grant.access_token.content;
-    }
-    next();
   });
 }
 
