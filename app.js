@@ -16,8 +16,8 @@ redisClient.connect().catch(console.error);
 
 // -------------------- CORS Setup --------------------
 const allowedOrigins = [
-  process.env.CORS_ORIGIN,       // Vercel frontend
-  process.env.CORS_ORIGIN_LOCAL, // Local dev frontend
+  "https://siggem-git-main-mans-projects-72273ac5.vercel.app", // Vercel frontend
+  "http://localhost:3000"
 ].filter(Boolean);
 
 const corsOptions = {
