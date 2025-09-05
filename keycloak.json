@@ -1,0 +1,10 @@
+{
+  "realm": "siggem",
+  "auth-server-url": "https://keycloaksiggem.com",
+  "ssl-required": "external",
+  "resource": "siggem",
+  "credentials": {
+    "secret": "N8pHV9fb95yXMafx6iJDgkDGrkpR4NBF"
+  },
+  "confidential-port": 0
+}
